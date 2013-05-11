@@ -1,1 +1,3 @@
 ampache-xbmc-plugin
+
+copy resources/settings.xml-template to resources/settings.xml

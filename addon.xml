@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="plugin.audio.ampache"
-  version="0.4.1"
+  version="0.5.0"
   name="ampache"
-  provider-name="mike better">
+  provider-name="Chris Slamar">
   <requires>
    <import addon="xbmc.python" version="1.0"/>
   </requires>

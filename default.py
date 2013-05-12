@@ -37,18 +37,28 @@ def cacheArt(url):
 	imageID = re.search(r"id=(\d+)", strippedAuth[0])
 
 	if os.path.exists(cacheDir + imageID.group(1) + ".png"):
-		print "File cached"
+		print "DEBUG: png cached"
+		return cacheDir + imageID.group(1) + ".png"
+	elif os.path.exists(cacheDir + imageID.group(1) + ".jpg"):
+		print "DEBUG: jpg cached"
+		return cacheDir + imageID.group(1) + ".jpg"
 	else:
-		print "File needs fetching"
+		print "DEBUG: File needs fetching"
 		opener = urllib.urlopen(url)
 		if opener.headers.maintype == 'image':
 			extension = opener.headers['content-type']
 			tmpExt = extension.split("/")
-			fname = imageID.group(1) + '.' + tmpExt[1]
+			if tmpExt[1] == "jpeg":
+				fname = imageID.group(1) + '.jpg'
+			else:
+				fname = imageID.group(1) + '.' + tmpExt[1]
 			open( cacheDir + fname, 'wb').write(opener.read())
-			print "Cached " + fname
+			print "DEBUG: Cached " + fname
+			return fname
 		else:
-			print "It didnt work"
+			print "DEBUG: It didnt work"
+			return False
+			
 
 def enableAlarm():
     alarm_hour = int(ampache.getSetting('alarm_hour'))
@@ -124,21 +134,24 @@ def play_alarm():
     play_track(ampache.getSetting('alarm_song'))
 
 # Main function for adding xbmc plugin elements
-def addDir(name,object_id,mode,iconimage,elem=None):
-    liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
+def addDir(name,object_id,mode,iconimage,elem=None,artFilename=None):
+	if artFilename:
+		liz=xbmcgui.ListItem(name, iconImage=artFilename, thumbnailImage=iconimage)
+	else:
+		liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
 
-    liz.setInfo( type="Music", infoLabels={ "Title": name } )
-    try:
-        artist_elem = elem.find("artist")
-        artist_id = int(artist_elem.attrib["id"]) 
-        cm = []
-        cm.append( ( "Show all albums from artist", "XBMC.Container.Update(%s?object_id=%s&mode=2)" % ( sys.argv[0],artist_id ) ) )
-        liz.addContextMenuItems(cm)
-    except:
-        pass
-    u=sys.argv[0]+"?object_id="+str(object_id)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
-    ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
-    return ok
+	liz.setInfo( type="Music", infoLabels={ "Title": name } )
+	try:
+		artist_elem = elem.find("artist")
+		artist_id = int(artist_elem.attrib["id"]) 
+		cm = []
+		cm.append( ( "Show all albums from artist", "XBMC.Container.Update(%s?object_id=%s&mode=2)" % ( sys.argv[0],artist_id ) ) )
+		liz.addContextMenuItems(cm)
+	except:
+		pass
+	u=sys.argv[0]+"?object_id="+str(object_id)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
+	ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
+	return ok
 
 def get_params():
     param=[]
@@ -243,10 +256,11 @@ def get_items(object_type, artist=None, add=None, filter=None, playlist=None, pl
         if object_type == 'albums':
             print "DEBUG: object_type - " + str(object_type)
             print "DEBUG: Art - " + str(node.findtext("art"))
-            cacheArt(node.findtext("art"))
+            artFilename = cacheArt(node.findtext("art"))
+            print "DEBUG: Art Filename: " + artFilename
             image = node.findtext("art")
             
-        addDir(node.findtext("name").encode("utf-8"),node.attrib["id"],mode,image,node)
+        addDir(node.findtext("name").encode("utf-8"),node.attrib["id"],mode,image,node, artFilename = artFilename)
 
 def GETSONGS(objectid=None,filter=None,add=None,limit=5000,offset=0,playlist=None):
     xbmcplugin.setContent(int(sys.argv[1]), 'songs')

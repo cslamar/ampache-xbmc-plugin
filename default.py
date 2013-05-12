@@ -1,10 +1,11 @@
 import sys
 import os
 import time
+import re
 # Shared resources
 BASE_RESOURCE_PATH = os.path.join( os.getcwd(), "resources" )
 sys.path.append( os.path.join( BASE_RESOURCE_PATH, "lib" ) )
-
+cacheDir = os.path.join( os.getcwd(), "cache/" )
 import random,xbmcplugin,xbmcgui,python_SHA256, datetime, time, urllib,urllib2, elementtree.ElementTree as ET
 
 try:
@@ -30,6 +31,24 @@ except ImportError:
 
 ampache = xbmcaddon.Addon("plugin.audio.ampache")
 imagepath = os.path.join(os.getcwd().replace(';', ''),'resources','images')
+
+def cacheArt(url):
+	strippedAuth = url.split('&')
+	imageID = re.search(r"id=(\d+)", strippedAuth[0])
+
+	if os.path.exists(cacheDir + imageID.group(1) + ".png"):
+		print "File cached"
+	else:
+		print "File needs fetching"
+		opener = urllib.urlopen(url)
+		if opener.headers.maintype == 'image':
+			extension = opener.headers['content-type']
+			tmpExt = extension.split("/")
+			fname = imageID.group(1) + '.' + tmpExt[1]
+			open( cacheDir + fname, 'wb').write(opener.read())
+			print "Cached " + fname
+		else:
+			print "It didnt work"
 
 def enableAlarm():
     alarm_hour = int(ampache.getSetting('alarm_hour'))
@@ -107,6 +126,7 @@ def play_alarm():
 # Main function for adding xbmc plugin elements
 def addDir(name,object_id,mode,iconimage,elem=None):
     liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
+
     liz.setInfo( type="Music", infoLabels={ "Title": name } )
     try:
         artist_elem = elem.find("artist")
@@ -221,7 +241,11 @@ def get_items(object_type, artist=None, add=None, filter=None, playlist=None, pl
         image = "DefaultFolder.png"
     for node in elem:
         if object_type == 'albums':
+            print "DEBUG: object_type - " + str(object_type)
+            print "DEBUG: Art - " + str(node.findtext("art"))
+            cacheArt(node.findtext("art"))
             image = node.findtext("art")
+            
         addDir(node.findtext("name").encode("utf-8"),node.attrib["id"],mode,image,node)
 
 def GETSONGS(objectid=None,filter=None,add=None,limit=5000,offset=0,playlist=None):

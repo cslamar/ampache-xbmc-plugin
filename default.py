@@ -58,7 +58,6 @@ def cacheArt(url):
 		else:
 			print "DEBUG: It didnt work"
 			return False
-			
 
 def enableAlarm():
     alarm_hour = int(ampache.getSetting('alarm_hour'))
@@ -92,26 +91,31 @@ def addLink(name,url,iconimage,node):
 # TODO: Merge with addDir(). Same basic idea going on, this one adds links all at once, that one does it one at a time
 #       Also, some property things, some different context menu things.
 def addLinks(elem):
-    xbmcplugin.setContent(int(sys.argv[1]), "songs")
-    ok=True
-    li=[]
-    for node in elem:
-        cm = []
-        liz=xbmcgui.ListItem(label=node.findtext("title").encode("utf-8"), thumbnailImage=node.findtext("art"))
-        liz.setInfo( "music", { "title": node.findtext("title").encode("utf-8"), "artist": node.findtext("artist"), "album": node.findtext("album"), "ReleaseDate": str(node.findtext("year")) } )
-        liz.setProperty("mimetype", 'audio/mpeg')
-        liz.setProperty("IsPlayable", "true")
-        song_elem = node.find("song")
-        song_id = int(node.attrib["id"])
-        action = 'XBMC.RunPlugin(%s?object_id=%s&mode=10)' % ( sys.argv[0],song_id )
-        cm.append( ( "Set as Alarm", action  ) )
-        liz.addContextMenuItems(cm)
-        track_parameters = { "mode": 8, "object_id": song_id}
-        url = sys.argv[0] + '?' + urllib.urlencode(track_parameters)
-        tu= (url,liz)
-        li.append(tu)
-    ok=xbmcplugin.addDirectoryItems(handle=int(sys.argv[1]),items=li,totalItems=len(elem))
-    return ok
+	xbmcplugin.setContent(int(sys.argv[1]), "songs")
+	ok=True
+	li=[]
+	for node in elem:
+		cm = []
+		albumArt = cacheArt(node.findtext("art"))
+		print "DEBUG: albumArt - " + albumArt
+		liz=xbmcgui.ListItem(label=node.findtext("title").encode("utf-8"), thumbnailImage=albumArt)
+		# liz=xbmcgui.ListItem(label=node.findtext("title").encode("utf-8"), thumbnailImage=node.findtext("art"))
+
+
+		liz.setInfo( "music", { "title": node.findtext("title").encode("utf-8"), "artist": node.findtext("artist"), "album": node.findtext("album"), "ReleaseDate": str(node.findtext("year")) } )
+		liz.setProperty("mimetype", 'audio/mpeg')
+		liz.setProperty("IsPlayable", "true")
+		song_elem = node.find("song")
+		song_id = int(node.attrib["id"])
+		action = 'XBMC.RunPlugin(%s?object_id=%s&mode=10)' % ( sys.argv[0],song_id )
+		cm.append( ( "Set as Alarm", action  ) )
+		liz.addContextMenuItems(cm)
+		track_parameters = { "mode": 8, "object_id": song_id}
+		url = sys.argv[0] + '?' + urllib.urlencode(track_parameters)
+		tu= (url,liz)
+		li.append(tu)
+	ok=xbmcplugin.addDirectoryItems(handle=int(sys.argv[1]),items=li,totalItems=len(elem))
+	return ok
 
 # The function that actually plays an Ampache URL by using setResolvedUrl. Gotta have the extra step in order to make
 # song album art / play next automatically. We already have the track URL when we add the directory item so the api
@@ -123,7 +127,9 @@ def play_track(id):
     elem = ampache_http_request("song",filter=id)
     for thisnode in elem:
         node = thisnode
-    li = xbmcgui.ListItem(label=node.findtext("title").encode("utf-8"), thumbnailImage=node.findtext("art"), path=node.findtext("url"))
+    albumArt = cacheArt(node.findtext("art"))
+    # li = xbmcgui.ListItem(label=node.findtext("title").encode("utf-8"), thumbnailImage=node.findtext("art"), path=node.findtext("url"))
+    li = xbmcgui.ListItem(label=node.findtext("title").encode("utf-8"), thumbnailImage=albumArt, path=node.findtext("url"))
     li.setInfo("music", { "title": node.findtext("title") })
     xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=li)
 
@@ -136,7 +142,8 @@ def play_alarm():
 # Main function for adding xbmc plugin elements
 def addDir(name,object_id,mode,iconimage,elem=None,artFilename=None):
 	if artFilename:
-		liz=xbmcgui.ListItem(name, iconImage=artFilename, thumbnailImage=iconimage)
+#		liz=xbmcgui.ListItem(name, iconImage=artFilename, thumbnailImage=iconimage)
+		liz=xbmcgui.ListItem(name, iconImage=artFilename, thumbnailImage=artFilename)
 	else:
 		liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
 
@@ -259,8 +266,12 @@ def get_items(object_type, artist=None, add=None, filter=None, playlist=None, pl
             artFilename = cacheArt(node.findtext("art"))
             print "DEBUG: Art Filename: " + artFilename
             image = node.findtext("art")
-            
-        addDir(node.findtext("name").encode("utf-8"),node.attrib["id"],mode,image,node, artFilename = artFilename)
+        try:
+        	artFilename
+        except NameError:
+        	addDir(node.findtext("name").encode("utf-8"),node.attrib["id"],mode,image,node)
+        else:
+        	addDir(node.findtext("name").encode("utf-8"),node.attrib["id"],mode,image,node, artFilename = artFilename)
 
 def GETSONGS(objectid=None,filter=None,add=None,limit=5000,offset=0,playlist=None):
     xbmcplugin.setContent(int(sys.argv[1]), 'songs')
